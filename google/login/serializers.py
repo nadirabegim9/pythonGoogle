@@ -35,14 +35,14 @@ class ExpenseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Expense
-        fields = ['id', 'user', 'wallet', 'amount', 'description', 'category', 'date', 'comments']
+        fields = ['id', 'user', 'wallet', 'amount', 'category', 'date', 'comments']
 
 
 class IncomeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Income
-        fields = ['id', 'user', 'wallet', 'amount', 'description', 'category', 'date', 'comments']
+        fields = ['id', 'user', 'wallet', 'amount', 'category', 'date', 'comments']
 
 
 class BudgetSerializer(serializers.ModelSerializer):
