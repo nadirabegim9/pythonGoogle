@@ -43,3 +43,10 @@ class IncomeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Income
         fields = ['id', 'user', 'wallet', 'amount', 'description', 'category', 'date', 'comments']
+
+
+class BudgetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Budget
+        fields = ['id', 'user', 'category', 'amount', 'start_date', 'end_date']
+

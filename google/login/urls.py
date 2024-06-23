@@ -24,4 +24,10 @@ urlpatterns = [
     path('incomes/', IncomeViewSet.as_view({'get': 'list', 'post': 'create'}), name='income_list'),
     path('incomes/<int:pk>/', IncomeViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}),
          name='income_detail'),
+
+    # Бюджет
+    path('budget/', BudgetViewSet.as_view({'get': 'list', 'post': 'create'}), name='budget_list'),
+    path('budget/<int:pk>/', BudgetViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}),
+         name='budget_detail'),
 ]
+
