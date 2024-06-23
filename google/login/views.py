@@ -1,6 +1,7 @@
 from rest_framework import viewsets
-from .models import CustomUser, Category, Wallet, Expense, Income
-from .serializers import CustomUserSerializer, CategorySerializer, WalletSerializer, ExpenseSerializer, IncomeSerializer
+from .models import CustomUser, Category, Wallet, Expense, Income, Budget
+from .serializers import CustomUserSerializer, CategorySerializer, WalletSerializer, ExpenseSerializer,\
+    IncomeSerializer, BudgetSerializer
 
 
 class CustomUserViewSet(viewsets.ModelViewSet):
@@ -26,3 +27,8 @@ class ExpenseViewSet(viewsets.ModelViewSet):
 class IncomeViewSet(viewsets.ModelViewSet):
     queryset = Income.objects.all()
     serializer_class = IncomeSerializer
+
+
+class BudgetViewSet(viewsets.ModelViewSet):
+    queryset = Budget.objects.all()
+    serializer_class = BudgetSerializer
