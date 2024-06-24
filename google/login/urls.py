@@ -29,5 +29,9 @@ urlpatterns = [
     path('budget/', BudgetViewSet.as_view({'get': 'list', 'post': 'create'}), name='budget_list'),
     path('budget/<int:pk>/', BudgetViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}),
          name='budget_detail'),
+
+    path('analytics/', VisualAnalyticsView.as_view()),
+
+
 ]
 
