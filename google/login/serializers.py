@@ -21,32 +21,60 @@ class CustomUserSerializer(UserSerializer):
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['id', 'name', 'user', 'image']
+        fields = '__all__'
+        read_only_fields = ('user',)
 
 
 class WalletSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Wallet
-        fields = ['id', 'user', 'balance']
+        fields = '__all__'
+        read_only_fields = ('user',)
 
 
 class ExpenseSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Expense
-        fields = ['id', 'user', 'wallet', 'amount', 'category', 'date', 'comments']
+        fields = '__all__'
+        read_only_fields = ('user', 'wallet')
+
+    def validate_category(self, value):
+        if not Category.objects.filter(user=self.context['request'].user, id=value.id).exists():
+            raise serializers.ValidationError("Вы можете выбрать только созданные категории..")
+        return value
 
 
 class IncomeSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Income
-        fields = ['id', 'user', 'wallet', 'amount', 'category', 'date', 'comments']
+        fields = '__all__'
+        read_only_fields = ('user', 'wallet')
+
+    def validate_category(self, value):
+        if not Category.objects.filter(user=self.context['request'].user, id=value.id).exists():
+            raise serializers.ValidationError("Вы можете выбрать только созданные категории.")
+        return value
+
+
+class FinanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Finance
+        fields = '__all__'
+        read_only_fields = ('user', 'is_achieved')
 
 
 class BudgetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Budget
-        fields = ['id', 'user', 'category', 'amount', 'start_date', 'end_date']
+        fields = '__all__'
+        read_only_fields = ('user',)
+
+
+class ReminderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Reminder
+        fields = '__all__'
+        read_only_fields = ('user',)
+
+
 

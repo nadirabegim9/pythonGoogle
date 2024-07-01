@@ -1,95 +1,144 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
 from .models import *
 from .serializers import *
-import matplotlib.pyplot as plt
-import seaborn as sns
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from.models import Expense, Income
-from.serializers import ExpenseSerializer, IncomeSerializer
-from django.contrib.auth.decorators import login_required
-from io import BytesIO
-from django.utils.decorators import method_decorator
-from rest_framework.authtoken.models import Token
-from django.contrib.auth import authenticate, login
-
-
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from django.http import StreamingHttpResponse
-import matplotlib.pyplot as plt
-import seaborn as sns
-from io import BytesIO
-import pandas as pd
-from .models import Expense, Income
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+from django.db.models import Sum
+from rest_framework.response import Response
 
-class VisualAnalyticsView(APIView):
+
+class ExpenseIncomeAnalyticsView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        # Get the user's expenses and incomes
-        expenses = Expense.objects.filter(user=request.user)
-        incomes = Income.objects.filter(user=request.user)
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter('start_date', openapi.IN_QUERY, description="Start date for the filter", type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
+            openapi.Parameter('end_date', openapi.IN_QUERY, description="End date for the filter", type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
+        ]
+    )
+    def get(self, request, format=None):
+        user = request.user
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
 
-        # Convert QuerySets to DataFrames
-        expenses_df = pd.DataFrame(list(expenses.values('amount', 'category', 'date')))
-        incomes_df = pd.DataFrame(list(incomes.values('amount', 'category', 'date')))
+        expenses = Expense.objects.filter(
+            user=user,
+            date__gte=start_date,
+            date__lte=end_date
+        ).values('date', 'category__name').annotate(total=Sum('amount')).order_by('date')
 
-        # Generate the visualizations
-        fig, ax = plt.subplots(2, 2, figsize=(12, 8))
+        incomes = Income.objects.filter(
+            user=user,
+            date__gte=start_date,
+            date__lte=end_date
+        ).values('date', 'category__name').annotate(total=Sum('amount')).order_by('date')
 
-        # Expenses by category
-        sns.countplot(x='category', data=expenses_df, ax=ax[0, 0])
-        ax[0, 0].set_title('Expenses by Category')
+        data = {
+            'expenses': list(expenses),
+            'incomes': list(incomes)
+        }
 
-        # Incomes by category
-        sns.countplot(x='category', data=incomes_df, ax=ax[0, 1])
-        ax[0, 1].set_title('Incomes by Category')
-
-        # Expenses over time
-        sns.lineplot(x='date', y='amount', data=expenses_df, ax=ax[1, 0])
-        ax[1, 0].set_title('Expenses over Time')
-
-        # Incomes over time
-        sns.lineplot(x='date', y='amount', data=incomes_df, ax=ax[1, 1])
-        ax[1, 1].set_title('Incomes over Time')
-
-        # Convert the figure to a PNG image
-        img = BytesIO()
-        fig.savefig(img, format='png')
-        img.seek(0)
-
-        # Return the image as a streaming response
-        response = StreamingHttpResponse(img, content_type='image/png')
-        response['Content-Disposition'] = 'inline; filename="analytics.png"'
-        return response
-
-class CustomUserViewSet(viewsets.ModelViewSet):
-    queryset = CustomUser.objects.all()
-    serializer_class = CustomUserSerializer
+        return Response(data)
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
-    queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Category.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 class WalletViewSet(viewsets.ModelViewSet):
     queryset = Wallet.objects.all()
     serializer_class = WalletSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        return Wallet.objects.filter(user=self.request.user)
 
-class ExpenseViewSet(viewsets.ModelViewSet):
-    queryset = Expense.objects.all()
-    serializer_class = ExpenseSerializer
+    def perform_create(self, serializer):
+        if Wallet.objects.filter(user=self.request.user).exists():
+            raise serializers.ValidationError("You already have a wallet.")
+        serializer.save(user=self.request.user)
 
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
 
-class IncomeViewSet(viewsets.ModelViewSet):
-    queryset = Income.objects.all()
-    serializer_class = IncomeSerializer
-    permission_classes = [permissions.IsAuthenticated]  # Пример разрешений - замените на необходимые
 
 
 class BudgetViewSet(viewsets.ModelViewSet):
     queryset = Budget.objects.all()
     serializer_class = BudgetSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class ReminderViewSet(viewsets.ModelViewSet):
+    queryset = Reminder.objects.all()
+    serializer_class = ReminderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class ExpenseViewSet(viewsets.ModelViewSet):
+    queryset = Expense.objects.all()
+    serializer_class = ExpenseSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Expense.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, wallet=self.request.user.wallet)
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user, wallet=self.request.user.wallet)
+
+
+class IncomeViewSet(viewsets.ModelViewSet):
+    queryset = Income.objects.all()
+    serializer_class = IncomeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Income.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, wallet=self.request.user.wallet)
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user, wallet=self.request.user.wallet)
+
+
+class FinanceViewSet(viewsets.ModelViewSet):
+    queryset = Finance.objects.all()
+    serializer_class = FinanceSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Finance.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)

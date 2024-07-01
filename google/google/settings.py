@@ -11,10 +11,11 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
@@ -25,7 +26,7 @@ SECRET_KEY = 'django-insecure-3k+cbv^s$yr7^$k63)q&p*&cley0p1+xu9=cbx3kjb44lea_td
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['moneey.pythonanywhere.com', '127.0.0.1']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -145,17 +146,9 @@ REST_FRAMEWORK = {
 }
 
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',  # Это позволяет использовать стандартную аутентификацию по username
+    'django.contrib.auth.backends.ModelBackend'
 ]
-#
-# REST_FRAMEWORK = {
-#     'DEFAULT_AUTHENTICATION_CLASSES': (
-#         'rest_framework.authentication.TokenAuthentication',
-#     ),
-#     'DEFAULT_PERMISSION_CLASSES': (
-#         'rest_framework.permissions.AllowAny',
-#     ),
-# }
+
 
 DJOSER = {
     'LOGIN_FIELD': 'email',
@@ -175,10 +168,10 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 LOGIN_REDIRECT_URL = "/"
 SIGNUP_REDIRECT_URL = "/"
 
-EMAIL_HOST = 'smtp.yandex.ru'  # замените на ваш SMTP сервер
-EMAIL_PORT = 465  # замените на ваш SMTP порт
-EMAIL_HOST_USER = 'nadirabegim23@yandex.ru'  # замените на ваш email
-EMAIL_HOST_PASSWORD = 'frlitjplpaqdnrko'  # замените на ваш пароль
+EMAIL_HOST = os.environ.get('EMAIL_HOST')  # замените на ваш SMTP сервер
+EMAIL_PORT = os.environ.get('EMAIL_PORT')  # замените на ваш SMTP порт
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')  # замените на ваш email
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')  # замените на ваш пароль
 EMAIL_USE_SSL = False
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

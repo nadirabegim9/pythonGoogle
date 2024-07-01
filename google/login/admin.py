@@ -6,4 +6,6 @@ admin.site.register(CustomUser)
 admin.site.register(Expense)
 admin.site.register(Income)
 admin.site.register(Budget)
+admin.site.register(Reminder)
+admin.site.register(Finance)
 

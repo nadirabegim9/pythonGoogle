@@ -4,6 +4,8 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+from django.utils.timezone import now
+from django.core.mail import send_mail
 
 
 class CustomUser(AbstractUser):
@@ -34,6 +36,12 @@ class Wallet(models.Model):
         return f"Wallet of {self.user.email} - Balance: {self.balance}"
 
 
+@receiver(post_save, sender=CustomUser)
+def create_wallet_for_new_user(sender, instance, created, **kwargs):
+    if created:
+        Wallet.objects.create(user=instance)
+
+
 class Expense(models.Model):
     """Расходы"""
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='expenses')
@@ -44,7 +52,7 @@ class Expense(models.Model):
     comments = models.TextField(blank=True, null=True, verbose_name='комментарии к расходу')
 
     def __str__(self):
-        return f"{self.amount} - {self.category.name} on {self.date}"
+        return f"{self.amount} - {self.category.name} on {self.date} - {self.user}"
 
 
 class Income(models.Model):
@@ -63,6 +71,22 @@ class Income(models.Model):
 """фунция для обловления баланса из кошелка"""
 
 
+@receiver(post_save, sender=Income)
+def update_wallet_balance_on_income_save(sender, instance, created, **kwargs):
+    if created:
+        instance.wallet.balance += instance.amount
+        instance.wallet.save()
+    else:
+        previous = Income.objects.get(pk=instance.pk)
+        difference = instance.amount - previous.amount
+        instance.wallet.balance += difference
+        instance.wallet.save()
+
+    # Check if any financial goals are achieved
+    for goal in instance.user.financial_goals.filter(is_achieved=False):
+        goal.check_goal_achievement()
+
+
 @receiver(post_save, sender=Expense)
 def update_wallet_balance_on_expense_save(sender, instance, created, **kwargs):
     if created:
@@ -74,17 +98,9 @@ def update_wallet_balance_on_expense_save(sender, instance, created, **kwargs):
         instance.wallet.balance += difference
         instance.wallet.save()
 
-
-@receiver(post_save, sender=Income)
-def update_wallet_balance_on_income_save(sender, instance, created, **kwargs):
-    if created:
-        instance.wallet.balance += instance.amount
-        instance.wallet.save()
-    else:
-        previous = Income.objects.get(pk=instance.pk)
-        difference = instance.amount - previous.amount
-        instance.wallet.balance += difference
-        instance.wallet.save()
+    # Check if any financial goals are achieved
+    for goal in instance.user.financial_goals.filter(is_achieved=False):
+        goal.check_goal_achievement()
 
 
 class Budget(models.Model):
@@ -124,3 +140,61 @@ def prevent_exceeding_budget(sender, instance, **kwargs):
         total_expenses = Expense.objects.filter(user=instance.user, category=instance.category, date__gte=budget.start_date, date__lte=budget.end_date).aggregate(total=models.Sum('amount'))['total'] or 0
         if total_expenses + instance.amount > budget.amount:
             raise ValidationError(f"Добавление этих расходов превысило бы бюджетный лимит для категории {instance.category.name}. Текущие расходы: {total_expenses}, Бюджет: {budget.amount}")
+
+
+class Reminder(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reminders')
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    start_date = models.DateField(verbose_name='начало периода', default=now)
+    recurrence_interval = models.CharField(max_length=10, choices=[
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+        ('yearly', 'Yearly')
+    ], blank=True, null=True)
+
+    def __str__(self):
+        return self.title
+
+
+class Finance(models.Model):
+    """Финансовая цель"""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='financial_goals')
+    name = models.CharField(max_length=255)
+    target_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    start_date = models.DateField(default=now)
+    end_date = models.DateField()
+    is_achieved = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.name} - {self.target_amount} by {self.end_date}"
+
+    def clean(self):
+        if self.start_date > self.end_date:
+            raise ValidationError(_('Дата начала не может быть позже даты окончания.'))
+
+    def check_goal_achievement(self):
+        if self.user.wallet.balance >= self.target_amount:
+            self.is_achieved = True
+            self.save()
+            return True
+        return False
+
+
+@receiver(post_save, sender=Finance)
+def check_financial_goal(sender, instance, **kwargs):
+    if instance.end_date <= now().date() and not instance.is_achieved:
+        print(f"Напоминание: Финансовая цель '{instance.name}' близка к своей конечной дате.")
+
+    if instance.check_goal_achievement():
+        # Send notification (e.g., email, in-app notification)
+        send_mail(
+            'Финансовая цель достигнута!',
+            f"Поздравляем! Вы достигли своей финансовой цели: {instance.name}.",
+            'money@example.com',
+            [instance.user.email],
+            fail_silently=False,
+        )
+        print(f"Уведомление: достигнута финансовая цель '{instance.name}'.")
+

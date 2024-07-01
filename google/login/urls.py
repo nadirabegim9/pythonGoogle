@@ -30,8 +30,16 @@ urlpatterns = [
     path('budget/<int:pk>/', BudgetViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}),
          name='budget_detail'),
 
-    path('analytics/', VisualAnalyticsView.as_view()),
+    # Финансовая
+    path('finances/', FinanceViewSet.as_view({'get': 'list', 'post': 'create'}), name='finances_list'),
+    path('finances/<int:pk>/', FinanceViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}),
+         name='finances_detail'),
 
+    # path('analytics/', VisualAnalyticsView.as_view()),
+    path('analytics/', ExpenseIncomeAnalyticsView.as_view(), name='expense-income-trends'),
+
+    path('reminders/', ReminderViewSet.as_view({'get': 'list', 'post': 'create'}), name='reminder-list'),
+    path('reminders/<int:pk>/', ReminderViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='reminder-detail'),
 
 ]
 
